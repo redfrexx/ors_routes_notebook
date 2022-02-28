@@ -1,0 +1,4 @@
+PATHS:
+  GOOGLE_ROUTES_DIR: "google"
+  ORS_ROUTES_DIR: "ors"
+  FIGURES_DIR: "figures"
