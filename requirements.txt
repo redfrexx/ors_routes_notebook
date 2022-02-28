@@ -1,0 +1,11 @@
+geopandas
+openrouteservice
+matplotlib
+contextily
+jupyter
+ipywidgets
+jupyter_contrib_nbextensions
+python-dotenv
+PyYAML
+tqdm
+ipyleaflet
