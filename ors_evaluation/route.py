@@ -74,26 +74,21 @@ class Route(object):
         return self.__json_response
 
     @property
-    def route_options(self):
-        """
-        Number of route options 
-        """
-        return len(self.json_response["features"])
-    
-    def coordinates(self, option=0):
+    def coordinates(self):
         """
         Returns the coordinates of the route from the ORS response
         :return: list of coordinates
         """
-        return self.json_response['features'][option]['geometry']['coordinates']
+        return self.json_response['features'][0]['geometry']['coordinates']
 
-    def extras(self, option=0):
+    @property
+    def extras(self):
         """
         Returns the extra information from the ORS response
         :return:
         """
         try:
-            return self.json_response['features'][option]['properties']['extras']
+            return self.json_response['features'][0]['properties']['extras']
         except:
             return None
 
@@ -105,6 +100,7 @@ class Route(object):
         """
         return np.concatenate([np.repeat(v[2], v[1] - v[0]) for v in self.extras[criteria]['values']])
 
+    @property
     def green_exposure(self):
         """
         Returns the overall exposure to greenness of the route
@@ -113,6 +109,7 @@ class Route(object):
         summary = self.summary("green")
         return sum(summary["value"] * summary["distance"]) / summary["distance"].sum()
 
+    @property
     def solar_exposure(self):
         """
         Returns the overall exposure to greenness of the route
@@ -121,6 +118,7 @@ class Route(object):
         summary = self.summary("shadow")
         return sum(summary["value"] * summary["distance"]) / summary["distance"].sum()
     
+    @property
     def steepness_exposure(self):
         """
         Returns the overall exposure to positive and negative steepness of the route
@@ -149,6 +147,7 @@ class Route(object):
             res1 = np.nan
         return [res1, res2]
 
+    @property
     def noise_exposure(self):
         """
         Returns the overall exposure to noise of the route
@@ -157,33 +156,37 @@ class Route(object):
         summary = self.summary("noise")
         return sum(summary["value"] * summary["distance"]) / summary["distance"].sum()
 
-    def duration(self, option=0):
+    @property
+    def duration(self):
         """
         Returns the overall duration of the route
         :return: Duration
         """
-        return self.json_response['features'][option]['properties']["summary"]['duration']
+        return self.json_response['features'][0]['properties']["summary"]['duration']
 
-    def distance(self, option=0):
+    @property
+    def distance(self):
         """
         Returns the overall distance of the route
         :return: Distance
         """
-        return self.json_response['features'][option]['properties']["summary"]['distance']
+        return self.json_response['features'][0]['properties']["summary"]['distance']
 
-    def descent(self, option=0):
+    @property
+    def descent(self):
         """
         Returns the overall distance of the route
         :return: Distance
         """
-        return self.json_response['features'][option]['properties']['descent']
+        return self.json_response['features'][0]['properties']['descent']
 
-    def ascent(self, option=0):
+    @property
+    def ascent(self):
         """
         Returns the overall distance of the route
         :return: Distance
         """
-        return self.json_response['features'][option]['properties']['ascent']
+        return self.json_response['features'][0]['properties']['ascent']
  
     def summary(self, criterion):
         """
@@ -205,16 +208,16 @@ class Route(object):
         summary = self.summary(criterion)
         return plt.bar(x=summary["value"], height=summary["amount"], color="green")
 
-    def route_segments(self, option=0):
+    @property
+    def route_segments(self):
         """
         Returns segments of the route
         :return: list of LineStrings
         """
-        coordinates = self.coordinates(option)
-        n_segments = len(coordinates) - 1
+        n_segments = len(self.coordinates) - 1
         segments = []
         for i in range(0, n_segments):
-            segments.append(LineString(coordinates[i:i + 2]))
+            segments.append(LineString(self.coordinates[i:i + 2]))
         return segments
 
     # todo write test for this function
@@ -226,23 +229,16 @@ class Route(object):
         if self.__dataframe is not None:
             return self.__dataframe
         else:
-            route_geometries = [LineString(self.coordinates(option=opt)) for opt in range(0, self.route_options)]
-            durations = [self.duration(option=opt) for opt in range(0, self.route_options)]
-            distances = [self.distance(option=opt) for opt in range(0, self.route_options)]
-            df = gpd.GeoDataFrame({"geometry": route_geometries, 
-                                  "duration": durations,
-                                  "distance": distances}, crs="epsg:4326")
+            df = gpd.GeoDataFrame({"geometry": self.route_segments}, crs={"init": "epsg:4326"})
+            if self.extras:
 
-            #if self.extras() is not None:
-
-            #    for k in self.extras.keys():
-            #        df[k] = self.values(k)
+                for k in self.extras.keys():
+                    df[k] = self.values(k)
 
                 # Dissolve line strings
-            #    columns = list(df.columns.drop("geometry"))
-            #    df = df.dissolve(by=columns, as_index=True).reset_index()
-            #    df.geometry = df.geometry.apply(lambda x: MultiLineString([x]) if isinstance(x, LineString) else x)
-                
+                columns = list(df.columns.drop("geometry"))
+                df = df.dissolve(by=columns, as_index=True).reset_index()
+                df.geometry = df.geometry.apply(lambda x: MultiLineString([x]) if isinstance(x, LineString) else x)
         self.__dataframe = df
         return self.__dataframe
 
